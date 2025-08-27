@@ -1,0 +1,117 @@
+/* 基本樣式 */
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: #faf8ef;
+    color: #776e65;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.container {
+    text-align: center;
+    background-color: #bbada0;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+/* 棋盤樣式 */
+#game-board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: 10px;
+    background-color: #bbada0;
+    padding: 10px;
+    border-radius: 6px;
+    margin: 20px auto;
+    width: 320px;
+    height: 320px;
+}
+
+.cell {
+    background-color: rgba(238, 228, 218, 0.35);
+    border-radius: 3px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.cell-input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 3px;
+    text-align: center;
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #776e65;
+    background-color: transparent;
+    padding: 0;
+}
+.cell-input:focus {
+    outline: 2px solid #8f7a66;
+}
+
+/* 按鈕和結果區域 */
+.controls {
+    margin: 20px 0;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: bold;
+    color: white;
+    background-color: #8f7a66;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 0 10px;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #9e8b77;
+}
+
+#result-container {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #eee4da;
+    border-radius: 5px;
+}
+#result-container.hidden {
+    display: none;
+}
+#best-move {
+    color: #f65e3b;
+    font-size: 1.5em;
+}
+#q-values {
+    margin-top: 10px;
+    font-family: monospace;
+    text-align: left;
+    display: inline-block;
+}
+
+/* 數字方塊顏色 */
+.tile-2 { background-color: #eee4da; color: #776e65; }
+.tile-4 { background-color: #ede0c8; color: #776e65; }
+.tile-8 { background-color: #f2b179; color: #f9f6f2; }
+.tile-16 { background-color: #f59563; color: #f9f6f2; }
+.tile-32 { background-color: #f67c5f; color: #f9f6f2; }
+.tile-64 { background-color: #f65e3b; color: #f9f6f2; }
+.tile-128 { background-color: #edcf72; color: #f9f6f2; }
+.tile-256 { background-color: #edcc61; color: #f9f6f2; }
+.tile-512 { background-color: #edc850; color: #f9f6f2; }
+.tile-1024 { background-color: #edc53f; color: #f9f6f2; }
+.tile-2048 { background-color: #edc22e; color: #f9f6f2; }
+.tile-default { background-color: #3c3a32; color: #f9f6f2; }

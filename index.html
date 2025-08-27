@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 最佳走法預測器 (靜態版)</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <!-- 引入 ONNX Runtime for Web -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>2048 最佳走法預測器</h1>
+        <p>所有運算都在您的瀏覽器中完成！請在棋盤輸入數字後點擊預測。</p>
+        <p id="status-message">正在載入模型...</p>
+
+        <div id="game-board"></div>
+        
+        <div class="controls">
+            <!-- 預設禁用按鈕，直到模型載入完成 -->
+            <button id="predict-btn" disabled>🧠 載入模型中</button>
+            <button id="clear-btn">🧹 清除棋盤</button>
+        </div>
+
+        <div id="result-container" class="hidden">
+            <h2>預測結果</h2>
+            <p><strong>最佳走法:</strong> <span id="best-move"></span></p>
+            <div id="q-values"></div>
+        </div>
+    </div>
+    <!-- 更新 JS 檔案路徑 -->
+    <script src="assets/script.js"></script>
+</body>
+</html>
