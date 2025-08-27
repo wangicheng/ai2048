@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- ONNX 模型相關 ---
     async function initONNX() {
         try {
-            ortSession = await ort.InferenceSession.create('./your_model.onnx');
+            ortSession = await ort.InferenceSession.create('./2048_dqn_model.onnx');
             statusMessage.textContent = '模型載入成功！請用方向鍵遊玩。';
             autoMoveBtn.disabled = false;
             initGame(); // 模型載入後才初始化遊戲
