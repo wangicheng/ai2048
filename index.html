@@ -3,32 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2048 最佳走法預測器 (靜態版)</title>
+    <title>AI 輔助 2048 遊戲</title>
     <link rel="stylesheet" href="assets/style.css">
-    <!-- 引入 ONNX Runtime for Web -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>2048 最佳走法預測器</h1>
-        <p>所有運算都在您的瀏覽器中完成！請在棋盤輸入數字後點擊預測。</p>
-        <p id="status-message">正在載入模型...</p>
+        <div class="header">
+            <h1>AI 輔助 2048</h1>
+            <div class="score-container">
+                分數: <span id="score">0</span>
+            </div>
+        </div>
+        <p id="status-message">正在載入 AI 模型...</p>
 
-        <div id="game-board"></div>
+        <div id="game-board-container">
+            <div id="game-board"></div>
+            <div id="game-over-overlay" class="hidden">
+                <p>遊戲結束!</p>
+                <button id="restart-btn-overlay">重新開始</button>
+            </div>
+        </div>
         
         <div class="controls">
-            <!-- 預設禁用按鈕，直到模型載入完成 -->
-            <button id="predict-btn" disabled>🧠 載入模型中</button>
-            <button id="clear-btn">🧹 清除棋盤</button>
+            <button id="auto-move-btn" disabled>🤖 自動走一步</button>
+            <button id="new-game-btn">🔄 新遊戲</button>
         </div>
 
-        <div id="result-container" class="hidden">
-            <h2>預測結果</h2>
-            <p><strong>最佳走法:</strong> <span id="best-move"></span></p>
-            <div id="q-values"></div>
+        <div id="prediction-container">
+            <h2>AI 預測 Q-Values</h2>
+            <div id="q-values-display">
+                <!-- Q-Values 將由 JS 動態填入 -->
+            </div>
         </div>
     </div>
-    <!-- 更新 JS 檔案路徑 -->
     <script src="assets/script.js"></script>
 </body>
 </html>

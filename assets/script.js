@@ -1,160 +1,207 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM 元素 ---
     const boardContainer = document.getElementById('game-board');
-    const predictBtn = document.getElementById('predict-btn');
-    const clearBtn = document.getElementById('clear-btn');
-    const resultContainer = document.getElementById('result-container');
-    const bestMoveSpan = document.getElementById('best-move');
-    const qValuesDiv = document.getElementById('q-values');
+    const scoreSpan = document.getElementById('score');
     const statusMessage = document.getElementById('status-message');
-    const TILE_CLASSES = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
+    const autoMoveBtn = document.getElementById('auto-move-btn');
+    const newGameBtn = document.getElementById('new-game-btn');
+    const gameOverOverlay = document.getElementById('game-over-overlay');
+    const restartBtnOverlay = document.getElementById('restart-btn-overlay');
+    const qValuesDisplay = document.getElementById('q-values-display');
+    const TILE_COLOR_MAP = { 2: "tile-2", 4: "tile-4", 8: "tile-8", 16: "tile-16", 32: "tile-32", 64: "tile-64", 128: "tile-128", 256: "tile-256", 512: "tile-512", 1024: "tile-1024", 2048: "tile-2048" };
 
+    // --- 遊戲狀態 ---
+    let board = [];
+    let score = 0;
     let ortSession = null;
+    let bestMoveIndex = -1;
 
-    // --- Python 的 change_values 函數的 JavaScript 版本 ---
-    function changeValuesJS(board) {
-        // 模型期望的 shape: [1, 4, 4, 16]
-        // 我們先創建一個展平的一維 Float32Array
+    // --- ONNX 模型相關 ---
+    async function initONNX() {
+        try {
+            ortSession = await ort.InferenceSession.create('./your_model.onnx');
+            statusMessage.textContent = '模型載入成功！請用方向鍵遊玩。';
+            autoMoveBtn.disabled = false;
+            initGame(); // 模型載入後才初始化遊戲
+        } catch (error) {
+            console.error(`載入模型失敗: ${error}`);
+            statusMessage.textContent = `模型載入失敗: ${error}.`;
+        }
+    }
+
+    function preprocessBoard(currentBoard) {
         const flatSize = 1 * 4 * 4 * 16;
-        const powerMat = new Float32Array(flatSize); // 預設全部為 0
-
+        const powerMat = new Float32Array(flatSize).fill(0);
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
-                const value = board[i][j];
-                let power = 0;
-                if (value !== 0) {
-                    power = Math.log2(value);
-                }
-                
-                // 計算在展平陣列中的索引位置
+                const value = currentBoard[i][j];
+                const power = value === 0 ? 0 : Math.log2(value);
                 const index = (i * 4 * 16) + (j * 16) + power;
-                powerMat[index] = 1.0;
+                if (index < flatSize) powerMat[index] = 1.0;
             }
         }
         return powerMat;
     }
+
+    async function runPrediction() {
+        if (!ortSession || isGameOver()) return;
     
-    // --- 主要的初始化函數 ---
-    async function main() {
-        try {
-            // 創建 ONNX Runtime 推論會話
-            // './2048_dqn_model.onnx' 是相對於 index.html 的路徑
-            ortSession = await ort.InferenceSession.create('./2048_dqn_model.onnx');
-            statusMessage.textContent = '模型載入成功！可以開始預測了。';
-            predictBtn.disabled = false;
-            predictBtn.textContent = '🚀 預測最佳走法';
-        } catch (error) {
-            console.error(`載入模型失敗: ${error}`);
-            statusMessage.textContent = `模型載入失敗: ${error}. 請檢查主控台。`;
-            predictBtn.textContent = '❌ 模型錯誤';
-        }
+        const processedData = preprocessBoard(board);
+        const inputTensor = new ort.Tensor('float32', processedData, [1, 4, 4, 16]);
+        const feeds = { [ortSession.inputNames[0]]: inputTensor };
+        const results = await ortSession.run(feeds);
+        const qValues = results[ortSession.outputNames[0]].data;
+        
+        updateQValuesUI(qValues);
     }
     
-    // --- UI 相關函數 (與之前版本相同) ---
-    function createBoard() { /* ... 與之前版本完全相同 ... */ }
-    function updateCellStyle(inputElement) { /* ... 與之前版本完全相同 ... */ }
-    function getBoardState() { /* ... 與之前版本完全相同 ... */ }
-    
-    // 將之前版本的 UI 函數複製過來
-    function createBoard() {
-        for (let i = 0; i < 16; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'cell-input';
-            input.dataset.row = Math.floor(i / 4);
-            input.dataset.col = i % 4;
-            input.placeholder = "0";
-            input.addEventListener('input', (e) => updateCellStyle(e.target));
-            cell.appendChild(input);
-            boardContainer.appendChild(cell);
-        }
-    }
-    function updateCellStyle(inputElement) {
-        const value = parseInt(inputElement.value, 10);
-        inputElement.className = 'cell-input'; // Reset
-        if (TILE_CLASSES.includes(value)) {
-            inputElement.classList.add(`tile-${value}`);
-        } else if (value > 2048) {
-            inputElement.classList.add('tile-default');
-        }
-    }
-    function getBoardState() {
-        const board = Array(4).fill(0).map(() => Array(4).fill(0));
-        const inputs = document.querySelectorAll('.cell-input');
-        inputs.forEach(input => {
-            const row = parseInt(input.dataset.row);
-            const col = parseInt(input.dataset.col);
-            const value = parseInt(input.value, 10) || 0;
-            board[row][col] = value;
+    function updateQValuesUI(qValues) {
+        const moveMap = ['向上 (Up)', '向左 (Left)', '向右 (Right)', '向下 (Down)'];
+        bestMoveIndex = qValues.indexOf(Math.max(...qValues));
+        
+        qValuesDisplay.innerHTML = '';
+        qValues.forEach((value, index) => {
+            const item = document.createElement('div');
+            item.className = 'q-value-item';
+            if (index === bestMoveIndex) {
+                item.classList.add('best-q-value');
+            }
+            item.innerHTML = `${moveMap[index]}: <span>${value.toFixed(4)}</span>`;
+            qValuesDisplay.appendChild(item);
         });
-        return board;
     }
 
-    // --- 事件監聽器 ---
-    clearBtn.addEventListener('click', () => {
-        const inputs = document.querySelectorAll('.cell-input');
-        inputs.forEach(input => {
-            input.value = '';
-            updateCellStyle(input);
-        });
-        resultContainer.classList.add('hidden');
+
+    // --- 2048 遊戲邏輯 ---
+    function initGame() {
+        board = Array(4).fill(0).map(() => Array(4).fill(0));
+        score = 0;
+        gameOverOverlay.classList.add('hidden');
+        addRandomTile();
+        addRandomTile();
+        renderBoard();
+        updateScore();
+        runPrediction();
+    }
+
+    function renderBoard() {
+        boardContainer.innerHTML = '';
+        for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 4; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                const value = board[r][c];
+                if (value > 0) {
+                    cell.textContent = value;
+                    cell.classList.add(TILE_COLOR_MAP[value] || 'tile-default');
+                }
+                boardContainer.appendChild(cell);
+            }
+        }
+    }
+
+    function addRandomTile() {
+        let emptyCells = [];
+        for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 4; c++) {
+                if (board[r][c] === 0) {
+                    emptyCells.push({ r, c });
+                }
+            }
+        }
+        if (emptyCells.length > 0) {
+            const { r, c } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            board[r][c] = Math.random() < 0.9 ? 2 : 4;
+        }
+    }
+    
+    function updateScore() {
+        scoreSpan.textContent = score;
+    }
+
+    function move(direction) {
+        let originalBoard = JSON.stringify(board);
+        let tempBoard = JSON.parse(originalBoard);
+
+        if (direction === 'up' || direction === 'down') {
+            tempBoard = transpose(tempBoard);
+        }
+
+        for (let r = 0; r < 4; r++) {
+            let row = tempBoard[r];
+            if (direction === 'right' || direction === 'down') row.reverse();
+            
+            let newRow = row.filter(val => val !== 0); // Slide
+            for (let i = 0; i < newRow.length - 1; i++) { // Merge
+                if (newRow[i] === newRow[i + 1]) {
+                    newRow[i] *= 2;
+                    score += newRow[i];
+                    newRow.splice(i + 1, 1);
+                }
+            }
+            while (newRow.length < 4) newRow.push(0); // Pad with zeros
+            
+            if (direction === 'right' || direction === 'down') newRow.reverse();
+            tempBoard[r] = newRow;
+        }
+
+        if (direction === 'up' || direction === 'down') {
+            board = transpose(tempBoard);
+        } else {
+            board = tempBoard;
+        }
+
+        // 只有在盤面改變時才新增方塊和重新預測
+        if (JSON.stringify(board) !== originalBoard) {
+            addRandomTile();
+            renderBoard();
+            updateScore();
+            runPrediction();
+            if (isGameOver()) {
+                gameOverOverlay.classList.remove('hidden');
+            }
+        }
+    }
+
+    function transpose(matrix) {
+        return matrix[0].map((col, i) => matrix.map(row => row[i]));
+    }
+
+    function canMove() {
+        for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 4; c++) {
+                if (board[r][c] === 0) return true;
+                if (r < 3 && board[r][c] === board[r + 1][c]) return true;
+                if (c < 3 && board[r][c] === board[r][c + 1]) return true;
+            }
+        }
+        return false;
+    }
+
+    function isGameOver() {
+        return !canMove();
+    }
+    
+    // --- 事件監聽 ---
+    document.addEventListener('keydown', (e) => {
+        if (gameOverOverlay.classList.contains('hidden')) {
+            if (e.key === 'ArrowUp') move('up');
+            else if (e.key === 'ArrowDown') move('down');
+            else if (e.key === 'ArrowLeft') move('left');
+            else if (e.key === 'ArrowRight') move('right');
+        }
     });
 
-    predictBtn.addEventListener('click', async () => {
-        if (!ortSession) {
-            alert('模型尚未載入完成，請稍候。');
-            return;
-        }
-
-        predictBtn.textContent = '預測中...';
-        predictBtn.disabled = true;
-
-        try {
-            // 1. 獲取並預處理棋盤數據
-            const boardState = getBoardState();
-            const processedData = changeValuesJS(boardState);
-            
-            // 2. 創建模型的輸入張量 (Tensor)
-            const inputTensor = new ort.Tensor('float32', processedData, [1, 4, 4, 16]);
-            
-            // 3. 準備輸入
-            const inputName = ortSession.inputNames[0];
-            const feeds = { [inputName]: inputTensor };
-
-            // 4. 執行模型推論
-            const results = await ortSession.run(feeds);
-            
-            // 5. 處理輸出結果
-            const outputName = ortSession.outputNames[0];
-            const qValues = results[outputName].data; // 這是一個 Float32Array
-
-            const bestMoveIndex = qValues.indexOf(Math.max(...qValues));
-            const moveMap = {0: '向上 (Up)', 1: '向左 (Left)', 2: '向右 (Right)', 3: '向下 (Down)'};
-            const bestMoveStr = moveMap[bestMoveIndex];
-
-            // 6. 顯示結果到 UI
-            bestMoveSpan.textContent = bestMoveStr;
-            qValuesDiv.innerHTML = `
-                Q-Values:<br>
-                Up:    ${qValues[0].toFixed(4)}<br>
-                Left:  ${qValues[1].toFixed(4)}<br>
-                Right: ${qValues[2].toFixed(4)}<br>
-                Down:  ${qValues[3].toFixed(4)}
-            `;
-            resultContainer.classList.remove('hidden');
-
-        } catch (error) {
-            alert('預測時發生錯誤: ' + error);
-            console.error(error);
-        } finally {
-            predictBtn.textContent = '🚀 預測最佳走法';
-            predictBtn.disabled = false;
+    autoMoveBtn.addEventListener('click', () => {
+        if (bestMoveIndex !== -1 && !isGameOver()) {
+            const moveMap = { 0: 'up', 1: 'left', 2: 'right', 3: 'down' };
+            move(moveMap[bestMoveIndex]);
         }
     });
+    
+    newGameBtn.addEventListener('click', initGame);
+    restartBtnOverlay.addEventListener('click', initGame);
 
-    // --- 啟動應用 ---
-    createBoard();
-    main();
+    // --- 啟動 ---
+    initONNX();
 });

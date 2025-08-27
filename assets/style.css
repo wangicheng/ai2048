@@ -8,63 +8,92 @@ body {
     align-items: center;
     min-height: 100vh;
     margin: 0;
+    -webkit-font-smoothing: antialiased;
 }
 
 .container {
+    width: 450px;
     text-align: center;
-    background-color: #bbada0;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
 }
 
 h1 {
     font-size: 2.5em;
-    margin-bottom: 10px;
+    margin: 0;
+}
+
+.score-container {
+    background-color: #bbada0;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+#status-message {
+    min-height: 1.2em;
 }
 
 /* 棋盤樣式 */
+#game-board-container {
+    position: relative;
+}
+
 #game-board {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    grid-gap: 10px;
+    grid-gap: 15px;
     background-color: #bbada0;
-    padding: 10px;
+    padding: 15px;
     border-radius: 6px;
-    margin: 20px auto;
-    width: 320px;
-    height: 320px;
+    width: 420px;
+    height: 420px;
+    box-sizing: border-box;
+    margin: 0 auto;
 }
 
 .cell {
     background-color: rgba(238, 228, 218, 0.35);
     border-radius: 3px;
+    font-size: 2.5em;
+    font-weight: bold;
     display: flex;
     justify-content: center;
     align-items: center;
+    transition: transform 0.1s ease-in-out;
 }
 
-.cell-input {
+/* 遊戲結束畫面 */
+#game-over-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    border: none;
-    border-radius: 3px;
-    text-align: center;
-    font-size: 1.8em;
+    background-color: rgba(238, 228, 218, 0.73);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+#game-over-overlay.hidden { display: none; }
+#game-over-overlay p {
+    font-size: 4em;
     font-weight: bold;
     color: #776e65;
-    background-color: transparent;
-    padding: 0;
-}
-.cell-input:focus {
-    outline: 2px solid #8f7a66;
+    margin: 0;
 }
 
-/* 按鈕和結果區域 */
-.controls {
-    margin: 20px 0;
-}
-
+/* 按鈕樣式 */
+.controls { margin: 20px 0; }
 button {
     padding: 10px 20px;
     font-size: 1em;
@@ -77,29 +106,36 @@ button {
     margin: 0 10px;
     transition: background-color 0.2s;
 }
+button:hover:not(:disabled) { background-color: #9e8b77; }
+button:disabled { background-color: #ab9e91; cursor: not-allowed; }
 
-button:hover {
-    background-color: #9e8b77;
-}
-
-#result-container {
+/* AI 預測區塊 */
+#prediction-container {
     margin-top: 20px;
     padding: 15px;
     background-color: #eee4da;
     border-radius: 5px;
 }
-#result-container.hidden {
-    display: none;
-}
-#best-move {
-    color: #f65e3b;
-    font-size: 1.5em;
-}
-#q-values {
+#q-values-display {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
     margin-top: 10px;
     font-family: monospace;
     text-align: left;
-    display: inline-block;
+}
+.q-value-item {
+    font-size: 1.5em; /* 放大字體 */
+    padding: 8px;
+    border-radius: 3px;
+    background-color: #cdc1b4;
+    transition: all 0.2s;
+}
+.q-value-item.best-q-value {
+    background-color: #f65e3b; /* 醒目顏色 */
+    color: white;
+    font-weight: bold;
+    transform: scale(1.05);
 }
 
 /* 數字方塊顏色 */
