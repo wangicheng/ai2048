@@ -4,18 +4,23 @@ import MoveHistory from './components/MoveHistory';
 import HistoryControls from './components/HistoryControls';
 import Toolbar from './components/Toolbar';
 import GameOverModal from './components/GameOverModal';
+import AnalysisPanel from './components/AnalysisPanel';
 import { initGame, move, addRandomTile, coordsToNotation, isGameOver } from './lib/game';
+import { GameModeProvider, useGameMode } from './contexts/GameModeContext';
+import { parsePGN } from './lib/pgn';
 
-function App() {
+function AppContent() {
   const [history, setHistory] = useState([ { board: [], score: 0 } ]);
   const [currentViewIndex, setCurrentViewIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [initialTiles, setInitialTiles] = useState([]);
+  const [evaluation, setEvaluation] = useState(null);
   
   // Game state derived from history
   const currentGameState = history[currentViewIndex];
   const isViewingLatest = currentViewIndex === history.length - 1;
+  const { mode, switchToAnalysis } = useGameMode();
 
   const resetGame = useCallback(() => {
     const { board, score, initialTiles: newInitialTiles } = initGame();
@@ -91,10 +96,11 @@ function App() {
     }
   }, [isPlaying, history.length]);
   
-  // PGN Generation for Analyze button
+  // PGN Generation
   const generatePGN = () => {
     const finalState = history[history.length - 1];
     const date = new Date().toISOString().split('T')[0].replace(/-/g, '.');
+    const result = isGameOver(finalState.board) ? "Locked" : "*";
 
     const initialBoardNotation = initialTiles
       .map(tile => `${tile.value === 4 ? '4' : ''}${coordsToNotation(tile.r, tile.c)}`)
@@ -106,23 +112,31 @@ function App() {
     pgn += `[Player "Player"]\n`;
     pgn += `[InitialBoard "${initialBoardNotation}"]\n`;
     pgn += `[FinalScore "${finalState.score}"]\n`;
-    pgn += `[Result "Locked"]\n\n`;
+    pgn += `[Result "${result}"]\n\n`;
 
     const movetext = history
       .slice(1)
       .map(item => `${item.moveNum}. ${item.move[0].toUpperCase()} ${item.notation}`)
       .join(' ');
-      
-    pgn += movetext + ' Locked';
+    pgn += movetext;
+    
+    if (isGameOver(finalState.board)) {
+      pgn += ' Locked';
+    }
     return pgn;
+  };
+
+  const handleShare = () => {
+    const pgn = generatePGN();
+    console.log(pgn);
   };
 
   const handleAnalyze = () => {
     const pgn = generatePGN();
-    console.log("--- 2048 Game PGN ---");
-    console.log(pgn);
-    console.log("---------------------");
-    alert("Game PGN has been printed to the developer console (F12).");
+    switchToAnalysis({
+      pgn,
+      history
+    });
   };
 
   if (history[0].board.length === 0) return <div>Loading...</div>;
@@ -133,11 +147,16 @@ function App() {
         
         {/* Left Column */}
         <div className="flex flex-col w-full lg:w-2/3 h-full min-h-0">
-          <GameBoard board={currentGameState.board} score={currentGameState.score} />
+          <GameBoard 
+            board={currentGameState.board} 
+            score={currentGameState.score} 
+            onEvaluationChange={setEvaluation}
+          />
         </div>
 
         {/* Right Column */}
         <div className="w-full lg:w-1/3 min-w-min lg:h-full flex flex-col">
+          {mode === 'analyze' && <AnalysisPanel evaluation={evaluation} />}
           <div className="hidden lg:flex lg:flex-col flex-1 min-h-0">
             <MoveHistory
               history={history}
@@ -153,13 +172,13 @@ function App() {
             onLast={() => setCurrentViewIndex(history.length - 1)}
             onTogglePlay={() => setIsPlaying(p => !p)}
           />
-          <Toolbar />
+          <Toolbar onShare={handleShare} onAnalyze={handleAnalyze} />
         </div>
 
       </div>
       
       {/* Game Over Modal */}
-      {gameOver && (
+      {gameOver && mode === 'play' && (
         <GameOverModal 
           score={history[history.length - 1].score}
           onPlayAgain={resetGame}
@@ -168,6 +187,14 @@ function App() {
         />
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <GameModeProvider>
+      <AppContent />
+    </GameModeProvider>
   );
 }
 

@@ -1,15 +1,16 @@
 const EvaluationBar = ({ score = 1 }) => {
   // 定義評價值範圍的對數邊界
-  const MAX_LOG_SCORE = 5; // log10(100000)
+  const MIN_LOG_SCORE = 3; // log10(1000)
+  const MAX_LOG_SCORE = 6; // log10(1000000)
 
-  // 確保 score 在有效範圍內 [1, 100000]，避免 log(0) 或負數
-  const clampedScore = Math.max(1, Math.min(score, 100000));
+  // 確保 score 在有效範圍內 [1000, 1000000]，避免 log(0) 或負數
+  const clampedScore = Math.max(1000, Math.min(score, 1000000));
 
   // 使用對數轉換，讓評價值在視覺上更均勻
-  // log10(1) = 0, log10(100000) = 5
+  // log10(1000) = 3, log10(1000000) = 6
   const logScore = Math.log10(clampedScore);
 
-  const advantagePercent = (logScore / MAX_LOG_SCORE) * 100;
+  const advantagePercent = ((logScore - MIN_LOG_SCORE) / (MAX_LOG_SCORE - MIN_LOG_SCORE)) * 100;
   
   const whiteHeightPercent = advantagePercent;
   
