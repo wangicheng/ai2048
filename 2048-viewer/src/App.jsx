@@ -110,7 +110,7 @@ function App() {
 
     const movetext = history
       .slice(1)
-      .map(item => `${item.moveNum}. ${item.move.toUpperCase()} ${item.notation}`)
+      .map(item => `${item.moveNum}. ${item.move[0].toUpperCase()} ${item.notation}`)
       .join(' ');
       
     pgn += movetext + ' Locked';
@@ -133,13 +133,11 @@ function App() {
         
         {/* Left Column */}
         <div className="flex flex-col w-full lg:w-2/3 h-full min-h-0">
-          <div className="flex-1 min-h-0 grid place-items-center square-container">
-            <GameBoard board={currentGameState.board} score={currentGameState.score} />
-          </div>
+          <GameBoard board={currentGameState.board} score={currentGameState.score} />
         </div>
 
         {/* Right Column */}
-        <div className="w-full lg:w-1/3 min-w-min h-full flex flex-col">
+        <div className="w-full lg:w-1/3 min-w-min lg:h-full flex flex-col">
           <div className="hidden lg:flex lg:flex-col flex-1 min-h-0">
             <MoveHistory
               history={history}

@@ -34,7 +34,7 @@ const MoveHistory = ({ history, currentViewIndex, onSelected }) => {
             }`}
             onClick={() => onSelected(index)}
           >
-            <span className="font-mono font-bold text-gray-400 w-8 inline-block">{item.moveNum}.</span>
+            <span className="font-mono font-bold text-gray-400 w-12 inline-block">{item.moveNum}.</span>
             
             <span className="w-8 text-center">
               {moveIcons[item.move] || item.move} {/* 如果找不到對應圖示，則顯示原始文字 */}
