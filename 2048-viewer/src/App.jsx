@@ -5,6 +5,7 @@ import HistoryControls from './components/HistoryControls';
 import Toolbar from './components/Toolbar';
 import GameOverModal from './components/GameOverModal';
 import AnalysisPanel from './components/AnalysisPanel';
+import ShareModal from './components/ShareModal'; // 新增
 import { initGame, move, addRandomTile, coordsToNotation, isGameOver } from './lib/game';
 import { GameModeProvider, useGameMode } from './contexts/GameModeContext';
 import { parsePGN } from './lib/pgn';
@@ -16,8 +17,9 @@ function AppContent() {
   const [gameOver, setGameOver] = useState(false);
   const [initialTiles, setInitialTiles] = useState([]);
   const [evaluation, setEvaluation] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false); // 新增
+  const [pgnToShare, setPgnToShare] = useState(''); // 新增
   
-  // Game state derived from history
   const currentGameState = history[currentViewIndex];
   const isViewingLatest = currentViewIndex === history.length - 1;
   const { mode, switchToAnalysis } = useGameMode();
@@ -35,7 +37,7 @@ function AppContent() {
   }, [resetGame]);
 
   const handleKeyDown = useCallback((e) => {
-    if (gameOver || !isViewingLatest) return; // Don't allow moves if game is over or not on latest view
+    if (gameOver || !isViewingLatest || showShareModal) return;
 
     let direction = null;
     switch (e.key) {
@@ -66,12 +68,11 @@ function AppContent() {
       setHistory(newHistory);
       setCurrentViewIndex(newHistory.length - 1);
 
-      // Check for game over condition
       if (isGameOver(newBoard)) {
         setGameOver(true);
       }
     }
-  }, [history, isViewingLatest, gameOver]);
+  }, [history, isViewingLatest, gameOver, showShareModal]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -80,7 +81,6 @@ function AppContent() {
     };
   }, [handleKeyDown]);
 
-  // Autoplay functionality
   useEffect(() => {
     if (isPlaying) {
       const interval = setInterval(() => {
@@ -88,7 +88,7 @@ function AppContent() {
           if (prev < history.length - 1) {
             return prev + 1;
           }
-          setIsPlaying(false); // Stop when it reaches the end
+          setIsPlaying(false);
           return prev;
         });
       }, 500);
@@ -96,8 +96,7 @@ function AppContent() {
     }
   }, [isPlaying, history.length]);
   
-  // PGN Generation
-  const generatePGN = () => {
+  const generatePGN = useCallback(() => {
     const finalState = history[history.length - 1];
     const date = new Date().toISOString().split('T')[0].replace(/-/g, '.');
     const result = isGameOver(finalState.board) ? "Locked" : "*";
@@ -124,11 +123,12 @@ function AppContent() {
       pgn += ' Locked';
     }
     return pgn;
-  };
+  }, [history, initialTiles]);
 
   const handleShare = () => {
     const pgn = generatePGN();
-    console.log(pgn);
+    setPgnToShare(pgn);
+    setShowShareModal(true);
   };
 
   const handleAnalyze = () => {
@@ -145,7 +145,6 @@ function AppContent() {
     <div className="flex flex-col w-dvh h-dvh justify-center p-4">
       <div className="flex flex-col max-w-7xl max-h-dvh lg:flex-row gap-4 w-full mx-auto lg:items-start flex-1 min-h-0">
         
-        {/* Left Column */}
         <div className="flex flex-col w-full lg:w-2/3 h-full min-h-0">
           <GameBoard 
             board={currentGameState.board} 
@@ -154,7 +153,6 @@ function AppContent() {
           />
         </div>
 
-        {/* Right Column */}
         <div className="w-full lg:w-1/3 min-w-min lg:h-full flex flex-col">
           {mode === 'analyze' && <AnalysisPanel evaluation={evaluation} />}
           <div className="hidden lg:flex lg:flex-col flex-1 min-h-0">
@@ -177,13 +175,19 @@ function AppContent() {
 
       </div>
       
-      {/* Game Over Modal */}
       {gameOver && mode === 'play' && (
         <GameOverModal 
           score={history[history.length - 1].score}
           onPlayAgain={resetGame}
           onAnalyze={handleAnalyze}
           onClose={() => setGameOver(false)}
+        />
+      )}
+
+      {showShareModal && (
+        <ShareModal 
+          pgn={pgnToShare}
+          onClose={() => setShowShareModal(false)}
         />
       )}
     </div>
