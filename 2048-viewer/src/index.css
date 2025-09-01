@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-900 text-white font-sans;
+}
+
+.square-container {
+  container-name: square_container;
+  container-type: size;
+}
+
+@container square_container (max-aspect-ratio: 1) {
+  .responsive-square { width: 100%; }
+}
+
+@container square_container (min-aspect-ratio: 1) {
+  .responsive-square { height: 100%; }
+}
