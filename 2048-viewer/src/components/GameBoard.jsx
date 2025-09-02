@@ -2,21 +2,9 @@ import EvaluationBar from './EvaluationBar';
 import Scoreboard from './Scoreboard';
 import Tile from './Tile';
 import { useGameMode } from '../contexts/GameModeContext';
-import { useEffect, useState } from 'react';
-import { evaluatePosition } from '../lib/engine';
 
-const GameBoard = ({ board, score, onEvaluationChange }) => {
+const GameBoard = ({ board, score, evaluation }) => {
   const { isAnalyzing } = useGameMode();
-  const [evaluation, setEvaluation] = useState(null);
-
-  useEffect(() => {
-    if (isAnalyzing) {
-      evaluatePosition(board).then((result) => {
-        setEvaluation(result);
-        onEvaluationChange?.(result);
-      });
-    }
-  }, [board, isAnalyzing, onEvaluationChange]);
 
   return (
     <div className="flex-1 min-h-min mt-16 ml-8 place-items-center square-container">

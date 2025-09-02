@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import GameBoard from './components/GameBoard';
 import MoveHistory from './components/MoveHistory';
 import HistoryControls from './components/HistoryControls';
@@ -6,9 +6,10 @@ import Toolbar from './components/Toolbar';
 import GameOverModal from './components/GameOverModal';
 import AnalysisPanel from './components/AnalysisPanel';
 import ShareModal from './components/ShareModal'; // 新增
-import { initGame, move, addRandomTile, coordsToNotation, isGameOver } from './lib/game';
+import { initGame, move, addRandomTile, coordsToNotation, isGameOver, canMove } from './lib/game';
 import { GameModeProvider, useGameMode } from './contexts/GameModeContext';
 import { parsePGN } from './lib/pgn';
+import { evaluatePosition } from './lib/engine';
 
 function AppContent() {
   const [history, setHistory] = useState([ { board: [], score: 0 } ]);
@@ -19,6 +20,8 @@ function AppContent() {
   const [evaluation, setEvaluation] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false); // 新增
   const [pgnToShare, setPgnToShare] = useState(''); // 新增
+  const botMoveInterval = useRef(null);
+  const botMoveTimeout = useRef(null);
   
   const currentGameState = history[currentViewIndex];
   const isViewingLatest = currentViewIndex === history.length - 1;
@@ -36,18 +39,8 @@ function AppContent() {
     resetGame();
   }, [resetGame]);
 
-  const handleKeyDown = useCallback((e) => {
-    if (gameOver || !isViewingLatest || showShareModal) return;
-
-    let direction = null;
-    switch (e.key) {
-      case 'ArrowUp': direction = 'up'; break;
-      case 'ArrowDown': direction = 'down'; break;
-      case 'ArrowLeft': direction = 'left'; break;
-      case 'ArrowRight': direction = 'right'; break;
-      default: return;
-    }
-    e.preventDefault();
+  const makeMove = useCallback((direction) => {
+    if (gameOver || !isViewingLatest) return;
 
     const lastState = history[history.length - 1];
     const { board: movedBoard, scoreGained, moved } = move(lastState.board, direction);
@@ -72,14 +65,78 @@ function AppContent() {
         setGameOver(true);
       }
     }
-  }, [history, isViewingLatest, gameOver, showShareModal]);
+  }, [history, isViewingLatest, gameOver]);
+
+  const handleKeyDown = useCallback((e) => {
+    if (gameOver || !isViewingLatest || showShareModal) return;
+
+    let direction = null;
+    switch (e.key) {
+      case 'ArrowUp': direction = 'up'; break;
+      case 'ArrowDown': direction = 'down'; break;
+      case 'ArrowLeft': direction = 'left'; break;
+      case 'ArrowRight': direction = 'right'; break;
+      default: return;
+    }
+    e.preventDefault();
+    makeMove(direction);
+  }, [gameOver, isViewingLatest, showShareModal, makeMove]);
+
+  const handleBotMove = useCallback(async () => {
+    if (gameOver || !isViewingLatest || !isAnalyzing) return;
+
+    const board = history[history.length - 1].board;
+    // 使用 evaluatePosition 獲取最新評估
+    const { logits } = await evaluatePosition(board);
+
+    const moves = ['left', 'right', 'up', 'down'];
+    
+    const moveData = moves.map((dir, i) => ({
+      direction: dir,
+      logit: logits[i],
+      isValid: canMove(board, dir)
+    })).filter(m => m.isValid);
+
+    if (moveData.length > 0) {
+      moveData.sort((a, b) => b.logit - a.logit);
+      makeMove(moveData[0].direction);
+    }
+  }, [gameOver, isViewingLatest, isAnalyzing, history, makeMove]);
+
+  const handleBotKeyDown = useCallback((e) => {
+    if (e.key.toLowerCase() !== 'b' || e.repeat || showShareModal) return;
+    if (gameOver || !isViewingLatest || !isAnalyzing) return;
+
+    e.preventDefault();
+    handleBotMove(); // 立即執行一次
+
+    // 設置一個延遲，如果按鍵持續按下，則啟動間隔計時器
+    botMoveTimeout.current = setTimeout(() => {
+      if (botMoveInterval.current) clearInterval(botMoveInterval.current);
+      botMoveInterval.current = setInterval(handleBotMove, 200); // 持續移動
+    }, 500); // 長按延遲
+
+  }, [handleBotMove, gameOver, isViewingLatest, isAnalyzing, showShareModal]);
+
+  const handleBotKeyUp = useCallback((e) => {
+    if (e.key.toLowerCase() !== 'b') return;
+    clearTimeout(botMoveTimeout.current);
+    clearInterval(botMoveInterval.current);
+    botMoveInterval.current = null;
+  }, []);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleBotKeyDown);
+    window.addEventListener('keyup', handleBotKeyUp);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleBotKeyDown);
+      window.removeEventListener('keyup', handleBotKeyUp);
+      clearTimeout(botMoveTimeout.current);
+      clearInterval(botMoveInterval.current);
     };
-  }, [handleKeyDown]);
+  }, [handleKeyDown, handleBotKeyDown, handleBotKeyUp]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -135,6 +192,17 @@ function AppContent() {
     toggleAnalysis();
   };
 
+  // 新增：當 board 或 isAnalyzing 變化時，集中呼叫 evaluatePosition
+  useEffect(() => {
+    if (isAnalyzing && currentGameState?.board?.length) {
+      evaluatePosition(currentGameState.board).then((result) => {
+        setEvaluation(result);
+      });
+    } else {
+      setEvaluation(null);
+    }
+  }, [currentGameState.board, isAnalyzing]);
+
   if (history[0].board.length === 0) return <div>Loading...</div>;
 
   return (
@@ -144,7 +212,7 @@ function AppContent() {
           <GameBoard 
             board={currentGameState.board} 
             score={currentGameState.score} 
-            onEvaluationChange={setEvaluation}
+            evaluation={evaluation}
           />
         </div>
 

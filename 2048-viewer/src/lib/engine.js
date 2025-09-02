@@ -35,10 +35,11 @@ export async function evaluatePosition(board) {
   if (!session) await initEngine();
   
   // Convert board to flat array
-  const state = board.flat();
+  const state = board.flat().map(value => (value === 0 ? 0 : Math.round(Math.log2(value))));
   
   // Create input tensor
   const input = new ort.Tensor('int64', state, [1, 16]);
+  console.log(input);
   
   // Run inference
   const output = await session.run({

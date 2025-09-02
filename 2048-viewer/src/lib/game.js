@@ -31,14 +31,14 @@ export const addRandomTile = (board) => {
 
 // Initialize game with two random tiles
 export const initGame = () => {
-  let { board } = addRandomTile(createEmptyBoard());
-  let { board: finalBoard, added } = addRandomTile(board);
+  let { board, added: added1 } = addRandomTile(createEmptyBoard());
+  let { board: finalBoard, added: added2 } = addRandomTile(board);
   return {
     board: finalBoard,
     score: 0,
     initialTiles: [
-      {r: getEmptyCells(board)[0][0], c: getEmptyCells(board)[0][1], value: board[getEmptyCells(board)[0][0]][getEmptyCells(board)[0][1]]},
-      added
+      added1,
+      added2
     ],
   };
 };
