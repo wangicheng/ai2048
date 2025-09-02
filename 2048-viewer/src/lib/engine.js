@@ -39,7 +39,6 @@ export async function evaluatePosition(board) {
   
   // Create input tensor
   const input = new ort.Tensor('int64', state, [1, 16]);
-  console.log(input);
   
   // Run inference
   const output = await session.run({

@@ -18,7 +18,7 @@ const GameBoard = ({ board, score, evaluation }) => {
           </div>
         )}
         <div className="absolute top-0 left-0 grid grid-cols-4 grid-rows-4 gap-4 bg-gray-800 p-4 rounded-lg w-full h-full">
-          {board.toReversed().flat().map((value, index) => (
+          {board.flat().map((value, index) => (
             <Tile key={index} value={value} />
           ))}
         </div>

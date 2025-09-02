@@ -87,9 +87,9 @@ export const move = (board, direction) => {
   let scoreGained = 0;
   let rotations = 0;
 
-  if (direction === 'up') { rotations = 1; }
+  if (direction === 'up') { rotations = 3; }
   else if (direction === 'right') { rotations = 2; }
-  else if (direction === 'down') { rotations = 3; }
+  else if (direction === 'down') { rotations = 1; }
 
   // Rotate to treat every move as a 'left' move
   for (let i = 0; i < rotations; i++) {
@@ -116,7 +116,7 @@ export const move = (board, direction) => {
 // Convert array coordinates to 2048-GN notation
 export const coordsToNotation = (r, c) => {
   const file = 'abcd'[c];
-  const rank = '1234'[r];
+  const rank = '4321'[r];
   return `${file}${rank}`;
 };
 // Check if the game is over
