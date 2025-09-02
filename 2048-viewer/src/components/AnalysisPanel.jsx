@@ -1,11 +1,12 @@
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useMemo } from 'react';
+import { canMove } from '../lib/game';
 
 // 假設每個項目含間距的高度是固定的，這裡我們假設 p-2 + space-y-2 的結果大約是 48px
 // 你可以根據你的實際樣式微調這個值
 const ITEM_HEIGHT = 48; // 每個項目含上下邊距的總高度
 
-const AnalysisPanel = ({ evaluation }) => {
+const AnalysisPanel = ({ evaluation, board }) => {  // 添加 board 參數
   const { value = 0, logits = [0, 0, 0, 0] } = evaluation || {};
 
   const moveIcons = {
@@ -15,12 +16,12 @@ const AnalysisPanel = ({ evaluation }) => {
     right: <ArrowRight size={20} />
   };
 
-  const moves = ['up', 'down', 'left', 'right'];
+  const moves = ['left', 'right', 'up', 'down'];
 
-  // -- Start of Changes --
-
-  // 1. 計算 probabilities 並建立一個包含排序後位置的 map
   const movePositions = useMemo(() => {
+    // 檢查每個方向是否可以移動
+    const validMoves = moves.map(move => canMove(board, move));
+    
     const maxLogit = Math.max(...logits);
     const exps = logits.map(logit => Math.exp(logit - maxLogit));
     const sumExps = exps.reduce((a, b) => a + b, 0);
@@ -30,23 +31,23 @@ const AnalysisPanel = ({ evaluation }) => {
 
     const movesWithData = moves.map((move, i) => ({
       id: move,
-      probability: probabilities[i],
+      probability: validMoves[i] ? probabilities[i] : 0, // 如果移動無效，機率設為 0
       logit: logits[i],
+      isValid: validMoves[i],
     }));
 
-    // 根據 probability 降序排列
-    const sortedMoves = movesWithData.sort((a, b) => b.probability - a.probability);
+    const sortedMoves = movesWithData.sort((a, b) => {
+      if (a.isValid && !b.isValid) return -1;
+      if (!a.isValid && b.isValid) return 1;
+      return b.probability - a.probability;
+    });
 
-    // 建立一個 map，key 是 move 的 id，value 是它在排序後的索引 (0, 1, 2, 3)
-    // 例如：{ up: 0, left: 1, down: 2, right: 3 }
     const positions = {};
     sortedMoves.forEach((move, index) => {
       positions[move.id] = index;
     });
     return positions;
-  }, [logits]);
-
-  // -- End of Changes --
+  }, [logits, board]);
 
   return (
     <div className="bg-gray-800/50 p-4 rounded-lg mb-4">
@@ -67,6 +68,7 @@ const AnalysisPanel = ({ evaluation }) => {
           const sumExps = exps.reduce((a, b) => a + b, 0);
           const probability = sumExps > 0 ? exps[i] / sumExps : 0.25;
           const percentage = (probability * 100).toFixed(1);
+          const isValid = canMove(board, move);
 
           // 3. 從 map 中獲取這個 move 應該在的位置
           const targetPositionIndex = movePositions[move];
@@ -80,16 +82,20 @@ const AnalysisPanel = ({ evaluation }) => {
               className="absolute w-full transition-transform duration-300 ease-in-out" // 加上 transition 相關 class
               style={{ transform: `translateY(${yOffset}px)` }} // 動態設定 transform
             >
-              <div className="relative bg-gray-700/50 rounded overflow-hidden">
-                {/* 背景進度條 */}
-                <div
-                  className="absolute top-0 left-0 h-full bg-blue-600/30 transition-all duration-300 ease-in-out"
-                  style={{ width: `${percentage}%` }}
-                />
+              <div className={`relative ${isValid ? 'bg-gray-700/50' : 'bg-gray-800/50'} rounded overflow-hidden`}>
+                {isValid && (
+                  <div
+                    className="absolute top-0 left-0 h-full bg-blue-600/30 transition-all duration-300 ease-in-out"
+                    style={{ width: `${percentage}%` }}
+                  />
+                )}
                 
-                {/* 前景內容 */}
-                <div className="relative flex items-center gap-3 text-gray-300 p-2">
-                  <span className="w-16 font-mono text-sm text-left">{percentage}%</span>
+                <div className={`relative flex items-center gap-3 p-2 ${
+                  isValid ? 'text-gray-300' : 'text-gray-500'
+                }`}>
+                  <span className="w-16 font-mono text-sm text-left">
+                    {isValid ? `${percentage}%` : 'blocked'}
+                  </span>
                   <span className="w-8">{moveIcons[move]}</span>
                   <div className="flex-grow" />
                   <span className="font-mono text-sm">{logits[i].toFixed(3)}</span>

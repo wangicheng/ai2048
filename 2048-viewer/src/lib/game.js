@@ -148,3 +148,9 @@ export const isGameOver = (board) => {
 
   return true; // Board is full and no moves are possible
 };
+
+// 新增: 檢查特定方向的移動是否有效
+export const canMove = (board, direction) => {
+  const { moved } = move(board, direction);
+  return moved;
+};

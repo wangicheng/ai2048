@@ -22,7 +22,7 @@ function AppContent() {
   
   const currentGameState = history[currentViewIndex];
   const isViewingLatest = currentViewIndex === history.length - 1;
-  const { mode, switchToAnalysis } = useGameMode();
+  const { mode, switchToAnalysis, isAnalyzing, toggleAnalysis } = useGameMode();
 
   const resetGame = useCallback(() => {
     const { board, score, initialTiles: newInitialTiles } = initGame();
@@ -132,11 +132,7 @@ function AppContent() {
   };
 
   const handleAnalyze = () => {
-    const pgn = generatePGN();
-    switchToAnalysis({
-      pgn,
-      history
-    });
+    toggleAnalysis();
   };
 
   if (history[0].board.length === 0) return <div>Loading...</div>;
@@ -144,7 +140,6 @@ function AppContent() {
   return (
     <div className="flex flex-col w-dvh h-dvh justify-center p-4">
       <div className="flex flex-col max-w-7xl max-h-dvh lg:flex-row gap-4 w-full mx-auto lg:items-start flex-1 min-h-0">
-        
         <div className="flex flex-col w-full lg:w-2/3 h-full min-h-0">
           <GameBoard 
             board={currentGameState.board} 
@@ -154,7 +149,12 @@ function AppContent() {
         </div>
 
         <div className="w-full lg:w-1/3 min-w-min lg:h-full flex flex-col">
-          {mode === 'analyze' && <AnalysisPanel evaluation={evaluation} />}
+          {isAnalyzing && 
+            <AnalysisPanel 
+              evaluation={evaluation} 
+              board={currentGameState.board}
+            />
+          }
           <div className="hidden lg:flex lg:flex-col flex-1 min-h-0">
             <MoveHistory
               history={history}
@@ -172,10 +172,10 @@ function AppContent() {
           />
           <Toolbar onShare={handleShare} onAnalyze={handleAnalyze} />
         </div>
-
       </div>
       
-      {gameOver && mode === 'play' && (
+      {/* 只在非分析狀態下顯示 GameOverModal */}
+      {gameOver && !isAnalyzing && (
         <GameOverModal 
           score={history[history.length - 1].score}
           onPlayAgain={resetGame}

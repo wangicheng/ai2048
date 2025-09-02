@@ -6,17 +6,17 @@ import { useEffect, useState } from 'react';
 import { evaluatePosition } from '../lib/engine';
 
 const GameBoard = ({ board, score, onEvaluationChange }) => {
-  const { mode } = useGameMode();
+  const { isAnalyzing } = useGameMode();
   const [evaluation, setEvaluation] = useState(null);
 
   useEffect(() => {
-    if (mode === 'analyze') {
+    if (isAnalyzing) {
       evaluatePosition(board).then((result) => {
         setEvaluation(result);
         onEvaluationChange?.(result);
       });
     }
-  }, [board, mode, onEvaluationChange]);
+  }, [board, isAnalyzing, onEvaluationChange]);
 
   return (
     <div className="flex-1 min-h-min mt-16 ml-8 place-items-center square-container">
@@ -24,7 +24,7 @@ const GameBoard = ({ board, score, onEvaluationChange }) => {
         <div className="absolute -top-16 left-0">
           <Scoreboard score={score} />
         </div>
-        {mode === 'analyze' && (
+        {isAnalyzing && (
           <div className="absolute top-0 -left-8 h-full">
             <EvaluationBar score={evaluation?.value || 0} />
           </div>
