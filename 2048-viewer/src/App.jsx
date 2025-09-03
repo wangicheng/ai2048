@@ -23,6 +23,12 @@ function AppContent() {
   const botMoveInterval = useRef(null);
   const botMoveTimeout = useRef(null);
   const isBKeyDown = useRef(false);
+  const isEvaluating = useRef(false);
+  const historyRef = useRef(history);
+
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
   
   const currentGameState = history[currentViewIndex];
   const isViewingLatest = currentViewIndex === history.length - 1;
@@ -90,31 +96,36 @@ function AppContent() {
   }, [gameOver, isViewingLatest, showShareModal, makeMove]);
 
   const handleBotMove = useCallback(async () => {
-    if (gameOver || !isViewingLatest || !isAnalyzing) return;
+    if (gameOver || !isViewingLatest || !isAnalyzing || isEvaluating.current) {
+        return;
+    }
 
-    setHistory(prevHistory => {
-        const lastState = prevHistory[prevHistory.length - 1];
-        if (!lastState || !lastState.board) return prevHistory;
+    try {
+        isEvaluating.current = true;
+
+        const currentHistory = historyRef.current;
+        const lastState = currentHistory[currentHistory.length - 1];
+        if (!lastState || !lastState.board) return;
 
         const board = lastState.board;
-        
-        evaluatePosition(board).then(({ logits }) => {
-            const moves = ['left', 'right', 'up', 'down'];
-            
-            const moveData = moves.map((dir, i) => ({
-                direction: dir,
-                logit: logits[i],
-                isValid: canMove(board, dir)
-            })).filter(m => m.isValid);
+        const { logits } = await evaluatePosition(board);
 
-            if (moveData.length > 0) {
-                moveData.sort((a, b) => b.logit - a.logit);
-                makeMove(moveData[0].direction);
-            }
-        });
-        
-        return prevHistory;
-    });
+        const moves = ['left', 'right', 'up', 'down'];
+        const moveData = moves.map((dir, i) => ({
+            direction: dir,
+            logit: logits[i],
+            isValid: canMove(board, dir)
+        })).filter(m => m.isValid);
+
+        if (moveData.length > 0) {
+            moveData.sort((a, b) => b.logit - a.logit);
+            makeMove(moveData[0].direction);
+        }
+    } catch (error) {
+        console.error("Evaluation failed:", error);
+    } finally {
+        isEvaluating.current = false;
+    }
   }, [gameOver, isViewingLatest, isAnalyzing, makeMove]);
 
   const handleBotKeyDown = useCallback((e) => {
@@ -128,7 +139,7 @@ function AppContent() {
 
     botMoveTimeout.current = setTimeout(() => {
       if (botMoveInterval.current) clearInterval(botMoveInterval.current);
-      botMoveInterval.current = setInterval(handleBotMove, 200);
+      botMoveInterval.current = setInterval(handleBotMove, 10);
     }, 500);
 
   }, [handleBotMove, gameOver, isViewingLatest, isAnalyzing, showShareModal]);
@@ -215,9 +226,13 @@ function AppContent() {
 
   useEffect(() => {
     if (isAnalyzing && currentGameState?.board?.length) {
-      evaluatePosition(currentGameState.board).then((result) => {
-        setEvaluation(result);
-      });
+        if (isEvaluating.current) return;
+        isEvaluating.current = true;
+        evaluatePosition(currentGameState.board).then((result) => {
+            setEvaluation(result);
+        }).finally(() => {
+            isEvaluating.current = false;
+        });
     } else {
       setEvaluation(null);
     }
