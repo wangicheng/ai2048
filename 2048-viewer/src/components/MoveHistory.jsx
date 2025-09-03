@@ -1,11 +1,14 @@
 import { useEffect, useRef } from 'react';
-import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import ArrowUp from "/arrow-up.svg";
+import ArrowDown from "/arrow-down.svg";
+import ArrowLeft from "/arrow-left.svg";
+import ArrowRight from "/arrow-right.svg";
 
 const moveIcons = {
-  up: <ArrowUp size={25} className="inline-block" />,
-  down: <ArrowDown size={25} className="inline-block" />,
-  left: <ArrowLeft size={25} className="inline-block" />,
-  right: <ArrowRight size={25} className="inline-block" />,
+  up: <img src={ArrowUp} />,
+  down: <img src={ArrowDown} />,
+  left: <img src={ArrowLeft} />,
+  right: <img src={ArrowRight} />,
 };
 
 const MoveHistory = ({ history, currentViewIndex, onSelected }) => {
