@@ -43,30 +43,36 @@ function AppContent() {
   const makeMove = useCallback((direction) => {
     if (gameOver || !isViewingLatest) return;
 
-    const lastState = history[history.length - 1];
-    const { board: movedBoard, scoreGained, moved } = move(lastState.board, direction);
-    
-    if (moved) {
-      const { board: newBoard, added } = addRandomTile(movedBoard);
-      const newScore = lastState.score + scoreGained;
+    setHistory(prevHistory => {
+      const lastState = prevHistory[prevHistory.length - 1];
+      const { board: movedBoard, scoreGained, moved } = move(lastState.board, direction);
       
-      const newHistoryItem = {
-        board: newBoard,
-        score: newScore,
-        move: direction,
-        moveNum: history.length,
-        notation: `${added.value === 4 ? '4' : ''}${coordsToNotation(added.r, added.c)}`
-      };
+      if (moved) {
+        const { board: newBoard, added } = addRandomTile(movedBoard);
+        const newScore = lastState.score + scoreGained;
+        
+        const newHistoryItem = {
+          board: newBoard,
+          score: newScore,
+          move: direction,
+          moveNum: prevHistory.length,
+          notation: `${added.value === 4 ? '4' : ''}${coordsToNotation(added.r, added.c)}`
+        };
 
-      const newHistory = [...history, newHistoryItem];
-      setHistory(newHistory);
-      setCurrentViewIndex(newHistory.length - 1);
+        const newHistory = [...prevHistory, newHistoryItem];
+        
+        setCurrentViewIndex(newHistory.length - 1);
 
-      if (isGameOver(newBoard)) {
-        setGameOver(true);
+        if (isGameOver(newBoard)) {
+          setGameOver(true);
+        }
+
+        return newHistory;
       }
-    }
-  }, [history, isViewingLatest, gameOver]);
+
+      return prevHistory;
+    });
+  }, [gameOver, isViewingLatest]);
 
   const handleKeyDown = useCallback((e) => {
     if (gameOver || !isViewingLatest || showShareModal) return;
@@ -86,22 +92,30 @@ function AppContent() {
   const handleBotMove = useCallback(async () => {
     if (gameOver || !isViewingLatest || !isAnalyzing) return;
 
-    const board = history[history.length - 1].board;
-    const { logits } = await evaluatePosition(board);
+    setHistory(prevHistory => {
+        const lastState = prevHistory[prevHistory.length - 1];
+        if (!lastState || !lastState.board) return prevHistory;
 
-    const moves = ['left', 'right', 'up', 'down'];
-    
-    const moveData = moves.map((dir, i) => ({
-      direction: dir,
-      logit: logits[i],
-      isValid: canMove(board, dir)
-    })).filter(m => m.isValid);
+        const board = lastState.board;
+        
+        evaluatePosition(board).then(({ logits }) => {
+            const moves = ['left', 'right', 'up', 'down'];
+            
+            const moveData = moves.map((dir, i) => ({
+                direction: dir,
+                logit: logits[i],
+                isValid: canMove(board, dir)
+            })).filter(m => m.isValid);
 
-    if (moveData.length > 0) {
-      moveData.sort((a, b) => b.logit - a.logit);
-      makeMove(moveData[0].direction);
-    }
-  }, [gameOver, isViewingLatest, isAnalyzing, history, makeMove]);
+            if (moveData.length > 0) {
+                moveData.sort((a, b) => b.logit - a.logit);
+                makeMove(moveData[0].direction);
+            }
+        });
+        
+        return prevHistory;
+    });
+  }, [gameOver, isViewingLatest, isAnalyzing, makeMove]);
 
   const handleBotKeyDown = useCallback((e) => {
     if (e.key.toLowerCase() !== 'b' || isBKeyDown.current || showShareModal) return;
