@@ -5,7 +5,7 @@ import HistoryControls from './components/HistoryControls';
 import Toolbar from './components/Toolbar';
 import GameOverModal from './components/GameOverModal';
 import AnalysisPanel from './components/AnalysisPanel';
-import ShareModal from './components/ShareModal'; // 新增
+import ShareModal from './components/ShareModal';
 import { initGame, move, addRandomTile, coordsToNotation, isGameOver, canMove } from './lib/game';
 import { GameModeProvider, useGameMode } from './contexts/GameModeContext';
 import { parsePGN } from './lib/pgn';
@@ -18,10 +18,11 @@ function AppContent() {
   const [gameOver, setGameOver] = useState(false);
   const [initialTiles, setInitialTiles] = useState([]);
   const [evaluation, setEvaluation] = useState(null);
-  const [showShareModal, setShowShareModal] = useState(false); // 新增
-  const [pgnToShare, setPgnToShare] = useState(''); // 新增
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [pgnToShare, setPgnToShare] = useState('');
   const botMoveInterval = useRef(null);
   const botMoveTimeout = useRef(null);
+  const isBKeyDown = useRef(false);
   
   const currentGameState = history[currentViewIndex];
   const isViewingLatest = currentViewIndex === history.length - 1;
@@ -86,7 +87,6 @@ function AppContent() {
     if (gameOver || !isViewingLatest || !isAnalyzing) return;
 
     const board = history[history.length - 1].board;
-    // 使用 evaluatePosition 獲取最新評估
     const { logits } = await evaluatePosition(board);
 
     const moves = ['left', 'right', 'up', 'down'];
@@ -104,22 +104,24 @@ function AppContent() {
   }, [gameOver, isViewingLatest, isAnalyzing, history, makeMove]);
 
   const handleBotKeyDown = useCallback((e) => {
-    if (e.key.toLowerCase() !== 'b' || e.repeat || showShareModal) return;
+    if (e.key.toLowerCase() !== 'b' || isBKeyDown.current || showShareModal) return;
     if (gameOver || !isViewingLatest || !isAnalyzing) return;
 
     e.preventDefault();
-    handleBotMove(); // 立即執行一次
+    isBKeyDown.current = true;
 
-    // 設置一個延遲，如果按鍵持續按下，則啟動間隔計時器
+    handleBotMove();
+
     botMoveTimeout.current = setTimeout(() => {
       if (botMoveInterval.current) clearInterval(botMoveInterval.current);
-      botMoveInterval.current = setInterval(handleBotMove, 200); // 持續移動
-    }, 500); // 長按延遲
+      botMoveInterval.current = setInterval(handleBotMove, 200);
+    }, 500);
 
   }, [handleBotMove, gameOver, isViewingLatest, isAnalyzing, showShareModal]);
 
   const handleBotKeyUp = useCallback((e) => {
     if (e.key.toLowerCase() !== 'b') return;
+    isBKeyDown.current = false;
     clearTimeout(botMoveTimeout.current);
     clearInterval(botMoveInterval.current);
     botMoveInterval.current = null;
@@ -133,10 +135,15 @@ function AppContent() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keydown', handleBotKeyDown);
       window.removeEventListener('keyup', handleBotKeyUp);
+    };
+  }, [handleKeyDown, handleBotKeyDown, handleBotKeyUp]);
+
+  useEffect(() => {
+    return () => {
       clearTimeout(botMoveTimeout.current);
       clearInterval(botMoveInterval.current);
     };
-  }, [handleKeyDown, handleBotKeyDown, handleBotKeyUp]);
+  }, []);
 
   useEffect(() => {
     if (isPlaying) {
@@ -192,7 +199,6 @@ function AppContent() {
     toggleAnalysis();
   };
 
-  // 新增：當 board 或 isAnalyzing 變化時，集中呼叫 evaluatePosition
   useEffect(() => {
     if (isAnalyzing && currentGameState?.board?.length) {
       evaluatePosition(currentGameState.board).then((result) => {
@@ -242,7 +248,6 @@ function AppContent() {
         </div>
       </div>
       
-      {/* 只在非分析狀態下顯示 GameOverModal */}
       {gameOver && !isAnalyzing && (
         <GameOverModal 
           score={history[history.length - 1].score}
