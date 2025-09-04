@@ -14,8 +14,8 @@ export default defineConfig({
         }
       ]
     })
-  ]
-  ,
+  ],
+  base: '/ai2048/',
   server: {
     mimeTypes: {
       '.wasm': 'application/wasm'
