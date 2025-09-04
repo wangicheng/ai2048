@@ -17,7 +17,7 @@ const GameBoard = ({ board, score, evaluation }) => {
             <EvaluationBar score={evaluation?.value || 0} />
           </div>
         )}
-        <div className="absolute top-0 left-0 grid grid-cols-4 grid-rows-4 gap-4 bg-gray-800 p-4 rounded-lg w-full h-full">
+        <div className="absolute top-0 left-0 grid grid-cols-4 grid-rows-4 gap-4 bg-gray-800 p-4 rounded-lg w-full h-full min-w-min min-h-min">
           {board.flat().map((value, index) => (
             <Tile key={index} value={value} />
           ))}

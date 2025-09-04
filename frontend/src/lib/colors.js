@@ -15,7 +15,7 @@ export const TILE_COLORS = {
 };
 
 export const getTileStyle = (value) => {
-  const baseStyle = "flex items-center justify-center font-bold rounded-md text-4xl min-w-0 min-h-0";
+  const baseStyle = "flex items-center justify-center font-bold rounded-md text-4xl min-w-3xs min-h-3xs";
   if (value === 0) return "bg-gray-700/50 rounded-md";
   const colorStyle = TILE_COLORS[value] || "bg-[#3c3a32] text-white";
   return `${baseStyle} ${colorStyle}`;

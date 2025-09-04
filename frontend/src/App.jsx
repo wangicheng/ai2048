@@ -241,7 +241,7 @@ function AppContent() {
   if (history[0].board.length === 0) return <div>Loading...</div>;
 
   return (
-    <div className="flex flex-col w-dvh h-dvh justify-center p-4">
+    <div className="flex flex-col overflow-hidden h-screen w-screen justify-center p-4">
       <div className="flex flex-col max-w-7xl max-h-dvh lg:flex-row gap-4 w-full mx-auto lg:items-start flex-1 min-h-0">
         <div className="flex flex-col w-full lg:w-2/3 h-full min-h-0">
           <GameBoard 
