@@ -53,7 +53,8 @@ export function parsePGN(pgnString) {
   }
 
   // 1. 分離標籤和移動文本
-  const parts = pgnString.split(/\n\n+/);
+  const normalizedPgn = pgnString.replace(/\r\n/g, '\n');
+  const parts = normalizedPgn.split(/\n\n+/);
   if (parts.length < 1) {
     throw new Error("Invalid PGN format: No content found.");
   }
