@@ -277,7 +277,7 @@ function AppContent() {
         </div>
       </div>
       
-      {gameOver && !isAnalyzing && (
+      {gameOver && (
         <GameOverModal 
           score={history[history.length - 1].score}
           onPlayAgain={resetGame}
