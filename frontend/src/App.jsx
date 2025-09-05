@@ -6,9 +6,9 @@ import Toolbar from './components/Toolbar';
 import GameOverModal from './components/GameOverModal';
 import AnalysisPanel from './components/AnalysisPanel';
 import ShareModal from './components/ShareModal';
+import PgnImporter from './components/PgnImporter'; // <-- 1. 匯入 PgnImporter
 import { initGame, move, addRandomTile, coordsToNotation, isGameOver, canMove } from './lib/game';
 import { GameModeProvider, useGameMode } from './contexts/GameModeContext';
-import { parsePGN } from './lib/pgn';
 import { evaluatePosition } from './lib/engine';
 
 function AppContent() {
@@ -19,6 +19,7 @@ function AppContent() {
   const [initialTiles, setInitialTiles] = useState([]);
   const [evaluation, setEvaluation] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false); // <-- 2. 新增 state 控制匯入視窗
   const [pgnToShare, setPgnToShare] = useState('');
   const botMoveInterval = useRef(null);
   const botMoveTimeout = useRef(null);
@@ -45,6 +46,18 @@ function AppContent() {
   useEffect(() => {
     resetGame();
   }, [resetGame]);
+
+  // <-- 3. 新增處理 PGN 載入的函式
+  const handlePgnLoad = useCallback((gameData) => {
+    if (gameData && gameData.history && gameData.initialTiles) {
+      setHistory(gameData.history);
+      setInitialTiles(gameData.initialTiles);
+      setCurrentViewIndex(gameData.history.length - 1);
+      
+      const lastBoard = gameData.history[gameData.history.length - 1].board;
+      setGameOver(isGameOver(lastBoard));
+    }
+  }, [isAnalyzing, toggleAnalysis]);
 
   const makeMove = useCallback((direction) => {
     if (gameOver || !isViewingLatest) return;
@@ -81,7 +94,7 @@ function AppContent() {
   }, [gameOver, isViewingLatest]);
 
   const handleKeyDown = useCallback((e) => {
-    if (gameOver || !isViewingLatest || showShareModal) return;
+    if (gameOver || !isViewingLatest || showShareModal || showImportModal) return; // <-- 防止在 modal 開啟時觸發
 
     let direction = null;
     switch (e.key) {
@@ -93,7 +106,7 @@ function AppContent() {
     }
     e.preventDefault();
     makeMove(direction);
-  }, [gameOver, isViewingLatest, showShareModal, makeMove]);
+  }, [gameOver, isViewingLatest, showShareModal, showImportModal, makeMove]);
 
   const handleBotMove = useCallback(async () => {
     if (gameOver || !isViewingLatest || !isAnalyzing || isEvaluating.current) {
@@ -129,7 +142,7 @@ function AppContent() {
   }, [gameOver, isViewingLatest, isAnalyzing, makeMove]);
 
   const handleBotKeyDown = useCallback((e) => {
-    if (e.key.toLowerCase() !== 'b' || isBKeyDown.current || showShareModal) return;
+    if (e.key.toLowerCase() !== 'b' || isBKeyDown.current || showShareModal || showImportModal) return; // <-- 防止在 modal 開啟時觸發
     if (gameOver || !isViewingLatest || !isAnalyzing) return;
 
     e.preventDefault();
@@ -142,7 +155,7 @@ function AppContent() {
       botMoveInterval.current = setInterval(handleBotMove, 10);
     }, 500);
 
-  }, [handleBotMove, gameOver, isViewingLatest, isAnalyzing, showShareModal]);
+  }, [handleBotMove, gameOver, isViewingLatest, isAnalyzing, showShareModal, showImportModal]);
 
   const handleBotKeyUp = useCallback((e) => {
     if (e.key.toLowerCase() !== 'b') return;
@@ -273,7 +286,12 @@ function AppContent() {
             onLast={() => setCurrentViewIndex(history.length - 1)}
             onTogglePlay={() => setIsPlaying(p => !p)}
           />
-          <Toolbar onShare={handleShare} onAnalyze={handleAnalyze} />
+          {/* <-- 4. 傳遞 onImport prop 給 Toolbar --> */}
+          <Toolbar 
+            onShare={handleShare} 
+            onAnalyze={handleAnalyze} 
+            onImport={() => setShowImportModal(true)} 
+          />
         </div>
       </div>
       
@@ -290,6 +308,14 @@ function AppContent() {
         <ShareModal 
           pgn={pgnToShare}
           onClose={() => setShowShareModal(false)}
+        />
+      )}
+
+      {/* <-- 5. 條件性渲染 PGN Importer --> */}
+      {showImportModal && (
+        <PgnImporter
+          onClose={() => setShowImportModal(false)}
+          onPgnLoad={handlePgnLoad}
         />
       )}
     </div>

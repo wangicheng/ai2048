@@ -1,7 +1,7 @@
-import { Share2, SearchCode } from 'lucide-react';
+import { Share2, SearchCode, FilePlus } from 'lucide-react';
 import { useGameMode } from '../contexts/GameModeContext';
 
-const Toolbar = ({ onShare, onAnalyze }) => {
+const Toolbar = ({ onShare, onAnalyze, onImport }) => {
   const { isAnalyzing } = useGameMode();
   const buttonClass = "flex items-center justify-center w-8 h-8 rounded-lg bg-transparent transition-colors";
 
@@ -18,6 +18,9 @@ const Toolbar = ({ onShare, onAnalyze }) => {
         onClick={onAnalyze}
       >
         <SearchCode />
+      </button>
+      <button className={buttonClass + " text-gray-500 hover:bg-gray-100"}>
+        <FilePlus onClick={onImport} />
       </button>
     </div>
   );
